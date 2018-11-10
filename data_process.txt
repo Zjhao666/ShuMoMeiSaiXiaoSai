@@ -1,0 +1,139 @@
+% 读取数据，去掉Inversion
+data=xlsread('data.xlsx', 1, 'J2:S301');
+data(:, 5)=[]; % 去是否含有Inversion那一列，因为Inversion Num就可以表示了
+[N, M]=size(data); 
+
+% 计算相关性系数，并作图
+data(isnan(data))=0; % 将nan替换为0来计算相关性系数
+r=relate(data, 9);
+
+% G Force 相关性系数作图
+bar(r(:, 8)); 
+xlabel('differnent properties');
+ylabel('Pearson Correlation Coefficient');
+title('correlation between G Force and other properties');
+set(gca,'xticklabel',{'Year','Height','Speed','Length','Inversions','Drop', 'Duration', 'G Force', 'Vertical Angle'});
+width=1000;
+height=300;
+left=200;
+bottem=100;
+set(gcf,'position',[left,bottem,width,height]);
+
+% Vertical Angle 相关性系数作图
+bar(r(:, 9)); 
+xlabel('differnent properties');
+ylabel('Pearson Correlation Coefficient');
+title('correlation between Vertical Angle and other properties');
+set(gca,'xticklabel',{'Year','Height','Speed','Length','Inversions','Drop', 'Duration', 'G Force', 'Vertical Angle'});
+set(gcf,'position',[left,bottem,width,height]);
+
+% Drop 相关性作图
+bar(r(:, 6)); 
+xlabel('differnent properties');
+ylabel('Pearson Correlation Coefficient');
+title('correlation between Drop and other properties');
+set(gca,'xticklabel',{'Year','Height','Speed','Length','Inversions','Drop', 'Duration', 'G Force', 'Vertical Angle'});
+set(gcf,'position',[left,bottem,width,height]);
+
+% Duration相关性作图
+bar(r(:, 7));
+xlabel('differnent properties');
+ylabel('Pearson Correlation Coefficient');
+title('correlation between Duration and other properties');
+set(gca,'xticklabel',{'Year','Height','Speed','Length','Inversions','Drop', 'Duration', 'G Force', 'Vertical Angle'});
+set(gcf,'position',[left,bottem,width,height]);
+
+% 作图的结果表示不能删除最后的G Froce、Vertical angle、Drop和Duration
+% G Force、Vertical angle、Duration和其他的相关性系数较小，所以采用均值加随机扰动来填补
+% Drop和Height、Length相关性系数超过了0.5，使用Height、Length来拟合Drop
+% 接下来对数据进行填补
+% 使用均值加随机扰动的方式，随机扰动从[0, var(data(:, 8))]方差的范围中取
+
+% 对Height用均值进行填补
+m2 = mean(data(data(:,2)~=0, 2));
+data(data(:,2)==0, 2) = m2;
+
+% 对Speed用均值进行填补
+m3 = mean(data(data(:,3)~=0, 3));
+data(data(:,3)==0, 3) = m3;
+
+% 对Length用均值进行填补
+m4 = mean(data(data(:,4)~=0, 4));
+data(data(:,4)==0, 4) = m4;
+
+data=mean_fill(data, 8); % 填充G Force
+data=mean_fill(data, 9); % 填充Vertical Angle
+data=mean_fill(data, 7); % 填充Duration
+
+% 对Drop进行回归
+data=fit_fill(data); % 0.7290（第二列乘上的系数） 0.6101（第三列乘上的系数）
+
+% 保存数据
+save('data.mat', 'data');
+data=load('data.mat');
+data=data.data;
+
+% 标准化
+m=mean(data); % 均值size(m)==9
+s=std(data); % 方差size(v)==9
+m=repmat(m, 300, 1);
+s=repmat(s, 300, 1);
+data=data-m; % 减去均值 除以标准差
+data=data./s; % 点乘
+
+function r = realte(data, M)
+% 得到各列之间的Pearson相关性系数
+% M为特征的个数 也就是列数
+% 返回的r(i, j)就是第j列对第i列的相关系数
+% https://blog.csdn.net/nonmarking/article/details/43854803
+r = zeros(M, M);
+for i=1:M
+    for j=1:M
+        s=corrcoef(data(:,i), data(:,j));
+        r(i, j)=s(1,2);
+    end
+end
+
+各列的相关性系数
+    1.0000    0.2432    0.2133    0.0350    0.1359    0.1256   -0.1665    0.0890    0.2281
+    0.2432    1.0000    0.7789    0.3925   -0.1277    0.6788    0.0561    0.0474    0.3594
+    0.2133    0.7789    1.0000    0.4591   -0.1481    0.5872   -0.0310    0.0404    0.2879
+    0.0350    0.3925    0.4591    1.0000   -0.1063    0.4524    0.3559   -0.1634    0.1248
+    0.1359   -0.1277   -0.1481   -0.1063    1.0000   -0.2218    0.0419    0.1100   -0.1596
+    0.1256    0.6788    0.5872    0.4524   -0.2218    1.0000    0.1825    0.0093    0.3794
+   -0.1665    0.0561   -0.0310    0.3559    0.0419    0.1825    1.0000    0.0867   -0.0846
+    0.0890    0.0474    0.0404   -0.1634    0.1100    0.0093    0.0867    1.0000   -0.0956
+    0.2281    0.3594    0.2879    0.1248   -0.1596    0.3794   -0.0846   -0.0956    1.0000
+
+function ret = mean_fill(data, i)
+% 对第i列进行填补，填补的方式是使用均值，加上随机扰动
+% 随机扰动的范围为[-var(data(:, i)), var(data(:, i))]
+% 注意之前使用0来填补nan了，这里要进行处理
+[N, M]=size(data);
+idx=data(:, i)~=0;
+s = std(data(idx, i));
+m = mean(data(idx, i));
+for j=1:N
+    if data(j, i)==0
+        data(j, i)=m+unifrnd(-s, s);
+    end
+end
+ret = data;
+
+
+function ret = fit_fill(data)
+% 使用逐步线性回归的方式来得到第6列的数据 Drop
+% 因为Height(第2列)和Speed(第3列)和Drop的相关性高
+% 所以参考第2和第3列
+X=data(:, 2:3);
+y=data(:,6);
+idx=y~=0;
+y=y(idx);
+X=X(idx, :);
+b=regress(y, X); % b是系数 b=[c1, c2] %% y=b(0)*data(i,2) + b(1)*data(i,3);
+for i=1:300
+    if data(i, 6)==0
+        data(i, 6)=data(i, 2)*b(1)+data(i, 3)*b(2);
+    end
+end
+ret = data;
