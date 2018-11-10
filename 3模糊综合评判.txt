@@ -1,0 +1,31 @@
+clc,clear
+format short
+%初始化
+% number为读取的数据
+[number,text,all]=xlsread('E:\张晋豪资料包\大三上\数模美赛\ShuMoMeiSaiXiaoSai\data.xlsx','RollerCoasterData');
+% x2的qujian区间是无法容忍上下限
+% x2=@(qujian,lb,ub,x)((1-qujian(1)-x)./(qujian(1)-lb)).*(x>=lb&x<qujian(1))+(x>=qujian(1)&x<=qujian(2))+(1-(x-qujian(2))./(ub-qujian(2))).*(x>qujian(2)&x<=ub);
+
+%模糊综合评判法(主观方法，针对单个样本，根据用户体验之后的评价进行主观分级)
+%由于app刚开始没有评价，当使用了一段时间之后，由体验后的用户评价，可以根据对过山车每部分属性的打分，进行模糊综合评判法
+R=rand(10,9);%模拟的10个用户针对某个个游乐场9个属性的平均打分
+%对于每一个用户的打分可以考虑使用指数滑动平均，即最近用户的打的分权重应明显高于很久之前用户打的分
+% A=ones(1,10)*0.1111;%初始权重
+A=rand(1,10);
+s=sum(A);
+for i=1:10
+    A(i)=A(i)/s;
+end
+B=A*R;%模糊综合评判结果
+MAX=max(B);%根据此数据进行分级
+if 1>=MAX&&MAX>0.8
+    disp('五星级');
+elseif 0.8>=MAX&&MAX>0.6
+    disp('四星级');
+elseif 0.6>=MAX&&MAX>0.4
+    disp('三星级');
+elseif 0.4>=MAX&&MAX>0.2
+    disp('二星级');
+else
+    disp('一星级');
+end

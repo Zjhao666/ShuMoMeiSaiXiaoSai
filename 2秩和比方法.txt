@@ -1,0 +1,26 @@
+clc,clear
+format short
+%初始化
+% number为读取的数据
+[number,text,all]=xlsread('E:\张晋豪资料包\大三上\数模美赛\ShuMoMeiSaiXiaoSai\data.xlsx','RollerCoasterData');
+% x2的qujian区间是无法容忍上下限
+% x2=@(qujian,lb,ub,x)((1-qujian(1)-x)./(qujian(1)-lb)).*(x>=lb&x<qujian(1))+(x>=qujian(1)&x<=qujian(2))+(1-(x-qujian(2))./(ub-qujian(2))).*(x>qujian(2)&x<=ub);
+
+%秩和比方法
+w=ones(1,9)*0.1111;%权重向量
+ra=tiedrank(number);%对每个指标值分别编制，即对a的每一列分别编制
+[n,m]=size(number);%计算矩阵sa的维数
+RSR=mean(ra,2)/n;%计算秩和比
+W=repmat(w,[n,1]);
+WRSR=sum(number.*W,2)/n;%计算加权秩和比
+[sWRSR,ind]=sort(WRSR);%对加权秩和比排序
+p=[1:n]/n;%计算累积频率
+p(end)=1-1/(4*n);%修整最后一个累积频率，最后一个累积频率按1-1/(4n)估计
+Probit=norminv(p,0,1)+5;%计算标准正态分布的p分位数+5
+X=[ones(n,1),Probit'];%构造一元线性回归分析的数据矩阵
+[ab,abint,r,rint,stats]=regress(sWRSR,X);%一元线性回归分析
+WRSRfit=ab(1)+ab(2)*Probit;%计算WRSR估计值
+y=[1:300]';
+% 输出到excel
+xlswrite('E:\张晋豪资料包\大三上\数模美赛\ShuMoMeiSaiXiaoSai\zhihebiResult.xlsx',[y(ind),ra(ind,:),sWRSR],1);%数据写入表单"Sheet1"中
+xlswrite('E:\张晋豪资料包\大三上\数模美赛\ShuMoMeiSaiXiaoSai\zhihebiResult.xlsx',[y(ind),ones(n,1),[1:n]',p',Probit',WRSRfit',[n:-1:1]'],2);%数据写入表单"Sheet2"中

@@ -1,0 +1,26 @@
+clc,clear
+format short
+%初始化
+% number为读取的数据
+[number,text,all]=xlsread('E:\张晋豪资料包\大三上\数模美赛\ShuMoMeiSaiXiaoSai\data.xlsx','RollerCoasterData');
+% x2的qujian区间是无法容忍上下限
+% x2=@(qujian,lb,ub,x)((1-qujian(1)-x)./(qujian(1)-lb)).*(x>=lb&x<qujian(1))+(x>=qujian(1)&x<=qujian(2))+(1-(x-qujian(2))./(ub-qujian(2))).*(x>qujian(2)&x<=ub);
+
+%topsis正负理想解方法
+[m,n]=size(number);
+%归一化
+for j=1:n
+    number2(:,j)=(number(:,j)/norm(number(:,j)));
+end
+w=ones(1,9)*0.1111;%初始权重
+c=number2.*repmat(w,m,1);%加权矩阵
+Cstar=max(c);%正理想解
+C0=min(c);%负理想解
+for i=1:m
+    Sstar(i)=norm(c(i,:)-Cstar);%求导正理想解的距离
+    S0(i)=norm(c(i,:)-C0);%求到负理想解的距离
+end
+Sstar;S0;%显示到正理想解的距离及到负理想解的距离
+f=S0./(Sstar+S0);
+[sf,ind]=sort(f,'descend');%sf 分数 ind 下标
+disp(ind(1:100))%打印前一百名的id
